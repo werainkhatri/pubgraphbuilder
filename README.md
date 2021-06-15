@@ -1,9 +1,9 @@
 # npmgraphbuilder
 
-Builds graph of npm dependencies from npm registry. A graph is an instance of
+Builds graph of pub package dependencies from [pub.dev](https://pub.dev). A graph is an instance of
 [`ngraph.graph`](https://github.com/anvaka/ngraph.graph).
 
-[![Build Status](https://travis-ci.org/anvaka/npmgraphbuilder.png)](https://travis-ci.org/anvaka/npmgraphbuilder)
+[![Build Status](https://travis-ci.org/werainkhatri/pubgraphbuilder.png)](https://travis-ci.org/werainkhatri/pubgraphbuilder)
 # Demo
 
 This library is not bound to any particular http client. It requires http client
@@ -11,9 +11,9 @@ to be injected into constructor:
 
 ``` js
 var graph = require('ngraph.graph')();
-var graphBuilder = require('npmgraphbuilder')(httpClient);
+var graphBuilder = require('pubgraphbuilder')(httpClient);
 
-graphBuilder.createNpmDependenciesGraph(pkgName, graph)
+graphBuilder.createPubDependenciesGraph(pkgName, graph)
   .then(function (graph) {
     console.log('Done.');
     console.log('Nodes count: ', graph.getNodesCount());
@@ -66,7 +66,7 @@ To see working demo please refer to `demo` folder.
 With [npm](https://npmjs.org) do:
 
 ```
-npm install npmgraphbuilder
+npm install pubgraphbuilder
 ```
 
 # license

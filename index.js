@@ -1,9 +1,6 @@
-var npa = require('npm-package-arg');
-var Promise = require('bluebird');
-var q = require('q');
+var semver = require('semver');
 
 module.exports = buildGraph;
-module.exports.isRemote = isRemote;
 
 function buildGraph(https, url) {
   url = url || 'https://pub.dev/api/packages/';
@@ -14,13 +11,13 @@ function buildGraph(https, url) {
   var cache = Object.create(null);
 
   return {
-    createNpmDependenciesGraph: createNpmDependenciesGraph,
+    createPubDependenciesGraph: createPubDependenciesGraph,
     notifyProgress: function (cb) {
       progress = cb;
     }
   };
 
-  function createNpmDependenciesGraph(packageName, graph, version) {
+  function createPubDependenciesGraph(packageName, graph, version) {
     if (!packageName) throw new Error('Initial package name is required');
     if (!graph) throw new Error('Graph data structure is required');
     version = validateVersion(version);
@@ -49,11 +46,8 @@ function buildGraph(https, url) {
           resolve(processRegistryResponse(cached));
         });
       }
-
-      //* since pub packages are not remote
-      //* escaping not required since that is specific to npm registry
       
-      if(work.name === 'flutter') return getLatestFlutterPackageData(https).then(processRegistryResponse);
+      if(work.name === 'flutter') return getLatestFlutterPackageData().then(processRegistryResponse);
       else return https(url + work.name).then(processRegistryResponse);
 
       function processRegistryResponse(res) {
@@ -125,14 +119,6 @@ function buildGraph(https, url) {
   }
 }
 
-function isRemote(version) {
-  return typeof version === 'string' && (
-    (version.indexOf('git') === 0) ||
-    (version.indexOf('http') === 0) ||
-    (version.indexOf('file') === 0)
-  );
-}
-
 function getVersionedPackageData(data, version) {
   if(version === 'latest' || version === data.latest.version) {
     return data.latest;
@@ -145,14 +131,13 @@ function getVersionedPackageData(data, version) {
 function validateVersion(version) {
   if (!version || version === 'any') version = 'latest';
   else if(version[0] === '^') version = version.substring(1);
-  var semver = require('semver');
   if(version !== 'latest' && semver.valid(version) === null) {
     throw new Error('Incorrect version format: ' + version);
   }
   return version;
 }
 
-function getLatestFlutterPackageData(https) {
+function getLatestFlutterPackageData() {
   // TODO get latest version of flutter
   // const flutterurl = 'https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json';
   // var defer = q.defer();

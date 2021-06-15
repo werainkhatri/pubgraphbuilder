@@ -13,7 +13,7 @@ test('Passes default data', function (t) {
   });
 
   var graph = createGraph();
-  builder.createNpmDependenciesGraph('browserify', graph).fail(function (err) {
+  builder.createPubDependenciesGraph('browserify', graph).fail(function (err) {
     t.ok(err, 'Fired error, since we did not provide valid response');
   });
 });
@@ -28,7 +28,7 @@ test('Checks dependencies', function (t) {
   });
 
   var graph = createGraph();
-  builder.createNpmDependenciesGraph('browserify', graph)
+  builder.createPubDependenciesGraph('browserify', graph)
     .then(function () {
       t.equals(graph.getNodesCount(), 2, 'Graph has two links');
       t.ok(graph.hasLink('browserify', 'util'), 'Graph has two links');

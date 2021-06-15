@@ -5,7 +5,7 @@ var pkgName = process.argv[2] || 'http';
 var version = process.argv[3] || 'latest';
 console.log('building dependencies graph for', pkgName);
 
-graphBuilder.createNpmDependenciesGraph(pkgName, graph, version).
+graphBuilder.createPubDependenciesGraph(pkgName, graph, version).
   then(function (graph) {
     console.log('Done.');
     console.log('Nodes count: ', graph.getNodesCount());
@@ -22,7 +22,6 @@ function httpClient(url) {
   console.log('Calling: ', url);
   var q = require('q');
   var https = require('https');
-  var querystring = require('querystring');
 
   var defer = q.defer();
   https.get(url, function (res) {
