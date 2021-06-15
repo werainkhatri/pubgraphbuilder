@@ -1,10 +1,11 @@
 var graph = require('ngraph.graph')();
 var graphBuilder = require('../')(httpClient);
 
-var pkgName = process.argv[2] || 'browserify';
+var pkgName = process.argv[2] || 'http';
+var version = process.argv[3] || 'latest';
 console.log('building dependencies graph for', pkgName);
 
-graphBuilder.createNpmDependenciesGraph(pkgName, graph).
+graphBuilder.createNpmDependenciesGraph(pkgName, graph, version).
   then(function (graph) {
     console.log('Done.');
     console.log('Nodes count: ', graph.getNodesCount());
@@ -13,18 +14,18 @@ graphBuilder.createNpmDependenciesGraph(pkgName, graph).
     var serializer = require('ngraph.serialization/json');
     console.log(serializer.save(graph));
   })
-  .fail(function (err) {
+  .catch(function (err) {
     console.error('Failed to build graph: ', err);
   });
 
-function httpClient(url, data) {
+function httpClient(url) {
   console.log('Calling: ', url);
   var q = require('q');
-  var http = require('http');
+  var https = require('https');
   var querystring = require('querystring');
 
   var defer = q.defer();
-  http.get(url + '?' + querystring.stringify(data), function (res) {
+  https.get(url, function (res) {
     var body = '';
     res.setEncoding('utf8');
     res.on('data', function (chunk) {

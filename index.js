@@ -1,14 +1,14 @@
 var npa = require('npm-package-arg');
-var guessVersion = require('./lib/guessVersion.js');
 var Promise = require('bluebird');
+var q = require('q');
 
 module.exports = buildGraph;
 module.exports.isRemote = isRemote;
 
-function buildGraph(http, url) {
-  url = url || 'http://registry.npmjs.org/';
+function buildGraph(https, url) {
+  url = url || 'https://pub.dev/api/packages/';
   if (url[url.length - 1] !== '/') {
-    throw new Error('registry url is supposed to end with /');
+    throw new Error('api url is supposed to end with /');
   }
   var progress;
   var cache = Object.create(null);
@@ -23,7 +23,7 @@ function buildGraph(http, url) {
   function createNpmDependenciesGraph(packageName, graph, version) {
     if (!packageName) throw new Error('Initial package name is required');
     if (!graph) throw new Error('Graph data structure is required');
-    if (!version) version = 'latest';
+    version = validateVersion(version);
 
     var queue = [];
     var processed = Object.create(null);
@@ -50,39 +50,28 @@ function buildGraph(http, url) {
         });
       }
 
-      if (isRemote(work.version)) {
-        // TODO: This will not download remote dependencies (e.g. git-based)
-        return new Promise(function(resolve) {
-          resolve(processRegistryResponse({data: {}}));
-        });
-      }
-
-      var escapedName = npa(work.name).escapedName;
-      if (!escapedName && isHttp(work.name)) {
-        return http(work.name).then(res => {
-          if (res.data) {
-            // TODO: Validate pkg json
-            var pkgJSON = res.data;
-            pkgJSON._id = pkgJSON.name + '@' + pkgJSON.version;
-            var versions = {};
-            versions[pkgJSON.version] = pkgJSON;
-
-            return processRegistryResponse({
-              data: Object.assign({}, { versions: versions })
-            });
-          }
-          throw new Error('Unexpected response');
-        });
-      }
-      if (!escapedName) {
-        throw new Error('TODO: Escaped name is missing for ' + work.name);
-      }
-
-      return http(url + escapedName).then(processRegistryResponse);
+      //* since pub packages are not remote
+      //* escaping not required since that is specific to npm registry
+      
+      if(work.name === 'flutter') return getLatestFlutterPackageData(https).then(processRegistryResponse);
+      else return https(url + work.name).then(processRegistryResponse);
 
       function processRegistryResponse(res) {
-        cache[getCacheKey(work)] = res;
-        traverseDependencies(work, res.data);
+        var packageData;
+        if(res.data) {
+          if(res.data.error) {
+            throw new Error('Package with the name ' + work.name + ' doesn\'t exist');
+          }
+          packageData = getVersionedPackageData(res.data, work.version);
+          if(!packageData) {
+            throw new Error('Package with the version ' + work.version + ' doesn\'t exist');
+          }
+        } else {
+          packageData = res;
+        }
+        console.log(packageData.pubspec.name + " " + packageData.version);
+        cache[getCacheKey(work)] = packageData;
+        traverseDependencies(work, packageData);
 
         if (queue.length) {
           // continue building the graph
@@ -94,25 +83,16 @@ function buildGraph(http, url) {
     }
 
     function getCacheKey(work) {
-      var packageIsRemote = isRemote(work.version);
-      var cacheKey = work.name;
-      return packageIsRemote ? cacheKey + work.version : cacheKey
+      return work.name + work.version;
     }
 
-    function traverseDependencies(work, packageJson) {
-      var version, pkg, id;
-      if (isRemote(work.version)) {
-        version = '';
-        pkg = packageJson;
-        id = work.version;
-      } else {
-        version = guessVersion(work.version, packageJson);
-        pkg = packageJson.versions[version];
-        id = pkg._id;
-      }
+    function traverseDependencies(work, pkg) {
+      var version, id;
+      version = pkg.version;
+      id = pkg.pubspec.name + '@' + version;
 
       // TODO: here is a good place to address https://github.com/anvaka/npmgraph.an/issues/4
-      var dependencies = pkg.dependencies;
+      var dependencies = pkg.pubspec.dependencies;
 
       graph.beginUpdate();
 
@@ -137,16 +117,12 @@ function buildGraph(http, url) {
       function addToQueue(name) {
           queue.push({
             name: name,
-            version: dependencies[name],
+            version: name === 'flutter' ? '' : validateVersion(dependencies[name]),
             parent: id
           })
         }
     }
   }
-}
-
-function isHttp(version) {
-  return typeof version === 'string' && version.match(/^https?:\/\//);
 }
 
 function isRemote(version) {
@@ -155,4 +131,53 @@ function isRemote(version) {
     (version.indexOf('http') === 0) ||
     (version.indexOf('file') === 0)
   );
+}
+
+function getVersionedPackageData(data, version) {
+  if(version === 'latest' || version === data.latest.version) {
+    return data.latest;
+  }
+  for(var i=0; i<data.versions.length; i++) {
+    if(data.versions[i].version === version) return data.versions[i];
+  }
+}
+
+function validateVersion(version) {
+  if (!version || version === 'any') version = 'latest';
+  else if(version[0] === '^') version = version.substring(1);
+  var semver = require('semver');
+  if(version !== 'latest' && semver.valid(version) === null) {
+    throw new Error('Incorrect version format: ' + version);
+  }
+  return version;
+}
+
+function getLatestFlutterPackageData(https) {
+  // TODO get latest version of flutter
+  // const flutterurl = 'https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json';
+  // var defer = q.defer();
+  // https(flutterurl).then(function(res) {
+  //     version = res.releases[0].version;
+  //     var packageData = {
+  //       'version': version,
+  //       'pubspec': {
+  //         'version': version,
+  //         'name': 'flutter',
+  //         'dependencies': {}
+  //       }
+  //     };
+  //     defer.resolve(packageData);
+  // });
+  // return defer.promise;
+  var packageData = {
+    'version': '2.2.2',
+    'pubspec': {
+      'version': '2.2.2',
+      'name': 'flutter',
+      'dependencies': {}
+    }
+  }
+  return new Promise(function(resolve) {
+    resolve(packageData);
+  });
 }

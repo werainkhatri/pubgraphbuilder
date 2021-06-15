@@ -1,31 +1,32 @@
 {
-  "name": "npmgraphbuilder",
-  "version": "2.2.0",
-  "description": "Builds graph of npm dependencies from npm registry",
+  "name": "pubgraphbuilder",
+  "version": "1.0.0",
+  "description": "Builds graph of dependencies of a pub package from pub.dev",
   "main": "index.js",
   "scripts": {
     "test": "tap test/*.js"
   },
   "keywords": [
-    "npm",
+    "pub",
+    "flutter",
+    "dart",
     "ngraph",
     "graph",
     "dependencies"
   ],
-  "author": "Andrei Kashcha",
+  "author": "Viren Khatri",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anvaka/npmgraphbuilder"
+    "url": "https://github.com/werainkhatri/pubgraphbuilder"
   },
   "devDependencies": {
-    "tap": "~0.4.8",
-    "q": "~1.0.0",
     "ngraph.graph": "0.0.2",
-    "ngraph.serialization": "0.0.3"
+    "ngraph.serialization": "0.0.3",
+    "q": "^1.0.1",
+    "tap": "~0.4.8"
   },
   "dependencies": {
-    "bluebird": "^3.4.1",
     "npm-package-arg": "^4.2.0",
     "semver": "^5.2.0"
   }
