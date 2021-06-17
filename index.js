@@ -20,7 +20,8 @@ function buildGraph(https, url) {
   function createPubDependenciesGraph(packageName, graph, version) {
     if (!packageName) throw new Error('Initial package name is required');
     if (!graph) throw new Error('Graph data structure is required');
-    version = validateVersion(version);
+    if (!version || version === 'any') version = 'latest';
+    else if(semver.valid(version) === null) throw new Error('Incorrect version format: ' + version);
 
     var queue = [];
     var processed = Object.create(null);
@@ -47,7 +48,8 @@ function buildGraph(https, url) {
         });
       }
       
-      if(work.name === 'flutter') return getLatestFlutterPackageData().then(processRegistryResponse);
+      if(work.name === 'flutter' || work.name === 'flutter_test' || work.name === 'flutter_web_plugins') 
+        return getLatestFlutterPackageData(work.name, work.version).then(processRegistryResponse);
       else return https(url + work.name).then(processRegistryResponse);
 
       function processRegistryResponse(res) {
@@ -58,12 +60,11 @@ function buildGraph(https, url) {
           }
           packageData = getVersionedPackageData(res.data, work.version);
           if(!packageData) {
-            throw new Error('Package with the version ' + work.version + ' doesn\'t exist');
+            throw new Error('Package ' + work.name +' with the version ' + work.version + ' doesn\'t exist');
           }
         } else {
           packageData = res;
         }
-        console.log(packageData.pubspec.name + " " + packageData.version);
         cache[getCacheKey(work)] = packageData;
         traverseDependencies(work, packageData);
 
@@ -111,7 +112,7 @@ function buildGraph(https, url) {
       function addToQueue(name) {
           queue.push({
             name: name,
-            version: name === 'flutter' ? '' : validateVersion(dependencies[name]),
+            version: name === 'flutter' || name === 'flutter_test' || name === 'flutter_web_plugins' ? '' : validateVersion(dependencies[name]),
             parent: id
           })
         }
@@ -123,21 +124,21 @@ function getVersionedPackageData(data, version) {
   if(version === 'latest' || version === data.latest.version) {
     return data.latest;
   }
+  // TODO binary search using semver
   for(var i=0; i<data.versions.length; i++) {
-    if(data.versions[i].version === version) return data.versions[i];
+    if(semver.gte(data.versions[i].version, version)) return data.versions[i];
   }
 }
 
 function validateVersion(version) {
   if (!version || version === 'any') version = 'latest';
   else if(version[0] === '^') version = version.substring(1);
-  if(version !== 'latest' && semver.valid(version) === null) {
-    throw new Error('Incorrect version format: ' + version);
-  }
+  else if(semver.valid(version) === null) version = semver.minVersion(version);
   return version;
 }
 
-function getLatestFlutterPackageData() {
+function getLatestFlutterPackageData(name, version) {
+  if(version === '') version = '2.2.2';
   // TODO get latest version of flutter
   // const flutterurl = 'https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json';
   // var defer = q.defer();
@@ -155,10 +156,11 @@ function getLatestFlutterPackageData() {
   // });
   // return defer.promise;
   var packageData = {
-    'version': '2.2.2',
+    'version': version,
     'pubspec': {
-      'version': '2.2.2',
-      'name': 'flutter',
+      'version': version,
+      'name': name,
+      'description': "Flutter is Google's UI toolkit for building beautiful, natively compiled applications for mobile, web, desktop, and embedded devices from a single codebase. ",
       'dependencies': {}
     }
   }
