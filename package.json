@@ -1,6 +1,6 @@
 {
   "name": "pubgraphbuilder",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Builds graph of dependencies of a pub package from pub.dev",
   "main": "index.js",
   "scripts": {
